@@ -23,8 +23,8 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // ****************************************************************************
     // Uncomment and fill in with your Parse credentials:
-    [Parse setApplicationId:@"nDGRpIgZRdxJzxymmMDWPapgVLlq6Y8D2WoiMMQY"
-                  clientKey:@"lhRPd9dqLDLbPrwlm4L0No30yI0J9gdrTSmpHgmb"];
+    [Parse setApplicationId:@"3EGyiVArwgIRcV30xUsjZtOfdKn9kILYP2F7DM3f"
+                  clientKey:@"H56jR3zQFt29sAo7dPtswvNQCwfKexFp3jmX1SIt"];
     //
     // If you are using Facebook, uncomment and add your FacebookAppID to your bundle's plist as
     // described here: https://developers.facebook.com/docs/getting-started/facebook-sdk-for-ios/

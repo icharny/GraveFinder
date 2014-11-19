@@ -6,7 +6,9 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "GooglePlacesUtils.h"
 #import <MapKit/MapKit.h>
+
 @interface GraveFinderViewController : UIViewController <MKMapViewDelegate, CLLocationManagerDelegate>
 {
     IBOutlet MKMapView* mapView;
@@ -15,6 +17,7 @@
     CLLocation* currentLocation;
     CLLocation* cemeteryLocation;
     NSString* cemeteryReference;
+    MKCoordinateRegion userRegion;
 }
 
 @property (nonatomic, strong) MKMapView* mapView;
@@ -22,6 +25,7 @@
 @property (nonatomic, strong) CLLocation* currentLocation;
 @property (nonatomic, strong) CLLocation* cemeteryLocation;
 @property (nonatomic, strong) NSString* cemeteryReference;
+@property (nonatomic) MKCoordinateRegion userRegion;
 
 - (IBAction)getNearestCemetery:(id)sender;
 - (IBAction)clearMap:(id)sender;
