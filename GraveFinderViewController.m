@@ -10,10 +10,12 @@
 #import "MapAnnotation.h"
 #import <AddressBook/AddressBook.h>
 #import "NameInputViewController.h"
+#import "GravesTableViewController.h"
+#import "DataSingleton.h"
+#import "ImageViewController.h"
 
 @interface GraveFinderViewController ()
 
-- (void)getDirections;
 - (void)showRoute:(MKDirectionsResponse *)response;
 
 @end
@@ -21,25 +23,20 @@
 @implementation GraveFinderViewController
 
 @synthesize mapView;
-@synthesize locationLabel;
-@synthesize currentLocation, cemeteryLocation;
 @synthesize cemeteryReference;
-@synthesize userRegion;
 
 #pragma mark - UIViewController
 
 // Implement viewDidLoad to do additional setup after loading the view, typically from a nib.
 - (void)viewDidLoad {
     [super viewDidLoad];
-    locationLabel.text = @"";
     
     locationManager = [[CLLocationManager alloc] init];
     [locationManager requestWhenInUseAuthorization];
+    //    [locationManager requestAlwaysAuthorization];
     locationManager.desiredAccuracy = kCLLocationAccuracyBest;
     locationManager.delegate = self;
     [locationManager startUpdatingLocation];
-    currentLocation = nil;
-    cemeteryLocation = nil;
     cemeteryReference = nil;
     
     mapView.delegate = self;
@@ -47,113 +44,79 @@
     [mapView setUserTrackingMode:MKUserTrackingModeFollow animated:YES];
 }
 
-- (IBAction)centerOnUser:(id)sender {
-    if (currentLocation) {
-        //        [mapView setRegion:MKCoordinateRegionMake(mapView.userLocation.location.coordinate, MKCoordinateSpanMake(.005, .005)) animated:YES];
-        [mapView setRegion:userRegion animated:YES];
-        [mapView setUserTrackingMode:MKUserTrackingModeNone animated:YES];
-        [mapView setUserTrackingMode:MKUserTrackingModeFollow animated:NO];
-        //    [mapView setCenterCoordinate:mapView.userLocation.location.coordinate animated:YES];
+- (void)viewWillAppear:(BOOL)animated {
+    if ([DataSingleton grave]) {
+        [navButton setHidden:NO];
+        [clearButton setHidden:NO];
+        if ([[[DataSingleton grave] objectForKey:@"hasImage"] isEqual:@1]) {
+            [imageButton setHidden:NO];
+        } else {
+            [imageButton setHidden:YES];
+        }
+    } else {
+        [navButton setHidden:YES];
+        [clearButton setHidden:YES];
+        [imageButton setHidden:YES];
     }
+    [super viewWillAppear:animated];
+}
+
+- (IBAction)centerOnUser:(id)sender {
+    [mapView setUserTrackingMode:MKUserTrackingModeFollow animated:YES];
+}
+
+- (void)returnToGraveSearch {
+    [self presentViewController:[[NameInputViewController alloc] initWithType:kFind] animated:YES completion:nil];
 }
 
 - (IBAction)locate:(id)sender {
-    [self presentViewController:[[NameInputViewController alloc] initWithCurrentLocation:currentLocation type:kFind] animated:YES completion:nil];
+    [DataSingleton reset];
+    [self presentViewController:[[NameInputViewController alloc] initWithType:kFind] animated:YES completion:nil];
 }
 
 - (IBAction)save:(id)sender {
-    [self presentViewController:[[NameInputViewController alloc] initWithCurrentLocation:currentLocation type:kSave] animated:YES completion:nil];
+    [DataSingleton reset];
+    [self presentViewController:[[NameInputViewController alloc] initWithType:kSave] animated:YES completion:nil];
 }
 
 - (IBAction)clearMap:(id)sender {
     [mapView removeOverlays:[mapView overlays]];
     [mapView removeAnnotations:[mapView annotations]];
-    cemeteryLocation = nil;
+    [DataSingleton reset];
     cemeteryReference = nil;
+    [DataSingleton reset];
+    [clearButton setHidden:YES];
+    [navButton setHidden:YES];
+    [imageButton setHidden:YES];
+    [self centerOnUser:nil];
 }
 
 - (IBAction)getDirections:(id)sender {
-    SHOW_LOADING
-    PFQuery* query = [PFQuery queryWithClassName:@"Grave"];
-    [query whereKey:@"firstName" equalTo:@"First Name"];
-    [query whereKey:@"lastName" equalTo:@"Last Name"];
-    [query findObjectsInBackgroundWithBlock:^(NSArray *objects, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            HIDE_LOADING
-        });
-        if (!error) {
-            // The find succeeded.
-            NSLog(@"Successfully retrieved %lu graves.", (unsigned long)objects.count);
-            // Do something with the found objects
-            if (objects.count > 0) {
-                PFObject* grave = (PFObject *)[objects firstObject];
-                CLLocation* cLocation = [[CLLocation alloc] initWithLatitude:[[grave objectForKey:@"cemeteryLat"] doubleValue] longitude:[[grave objectForKey:@"cemeteryLon"] doubleValue]];
-                NSString* cRef = [grave objectForKey:@"cemeteryRef"];
-                NSString* cName = [grave objectForKey:@"name"];
-                if (currentLocation && cLocation && cRef) {
-                    [GooglePlacesUtils getDirectionsToLocationWithReference:cRef
-                                                         cemeteryFoundBlock:^(NSString *address) {
-                                                             NSDictionary* launchOptions;
-                                                             
-                                                             //open native maps
-                                                             NSDictionary* endDictionary = [self breakdownAddress:address name:cName];
-                                                             MKMapItem* start = [MKMapItem mapItemForCurrentLocation];
-                                                             MKMapItem* end = [[MKMapItem alloc] initWithPlacemark:[[MKPlacemark alloc] initWithCoordinate:cLocation.coordinate addressDictionary:endDictionary]];
-                                                             if ([currentLocation distanceFromLocation:cLocation] >= 250) {
-                                                                 launchOptions = @{MKLaunchOptionsDirectionsModeKey : MKLaunchOptionsDirectionsModeDriving};
-                                                             } else {
-                                                                 launchOptions = @{MKLaunchOptionsDirectionsModeKey : MKLaunchOptionsDirectionsModeWalking};
-                                                             }
-                                                             [MKMapItem openMapsWithItems:@[start, end] launchOptions:launchOptions];
-                                                         }
-                                                       afterEverythingBlock:nil];
-                }
-            } else {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [[[UIAlertView alloc] initWithTitle:@"Error" message:@"There are no graves with that name." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil] show];
-                });
-            }
-        } else {
-            // Log details of the failure
-            NSLog(@"Error: %@ %@", error, [error userInfo]);
-        }
-    }];
-}
-
-- (IBAction)getNearestCemetery:(id)sender {
-    if (currentLocation) {
-        SHOW_LOADING
-        [GooglePlacesUtils getNearestCemeteryForLocation:currentLocation cemeteryFoundBlock:^(NSArray* cemeteries) {
-            NSDictionary* cemetery = (NSDictionary *)[cemeteries objectAtIndex:0];
-            
-            NSLog(@"cemetery: %@", cemetery);
-            
-            NSString* name = [cemetery objectForKey:@"name"];
-            locationLabel.text = name;
-            NSDictionary* location = [[cemetery objectForKey:@"geometry"] objectForKey:@"location"];
-            CLLocationCoordinate2D coordinate = CLLocationCoordinate2DMake([[location objectForKey:@"lat"] doubleValue], [[location  objectForKey:@"lng"] doubleValue]);
-            cemeteryLocation = [[CLLocation alloc] initWithLatitude:coordinate.latitude longitude:coordinate.longitude];
-            cemeteryReference = [cemetery objectForKey:@"reference"];
-            [mapView setCenterCoordinate:coordinate animated:TRUE];
-            MapAnnotation* annotation = [[MapAnnotation alloc] initWithCoordinate:coordinate title:name];
-            [mapView addAnnotation:annotation];
-            
-            PFObject* grave = [PFObject objectWithClassName:@"Grave"];
-            grave[@"firstName"] = @"First Name";
-            grave[@"lastName"] = @"Last Name";
-            grave[@"cemeteryName"] = name;
-            grave[@"cemeteryLat"] = [NSNumber numberWithDouble:coordinate.latitude];
-            grave[@"cemeteryLon"] = [NSNumber numberWithDouble:coordinate.longitude];
-            grave[@"cemeteryRef"] = cemeteryReference;
-            // [grave saveEventually];
-            [grave saveInBackground];
-            
-            [self getDirections];
-        } afterEverythingBlock:^{
-            dispatch_async(dispatch_get_main_queue(), ^{
-                HIDE_LOADING
-            });
-        }];
+    PFObject* grave = [DataSingleton grave];
+    CLLocation* currentLocation = [DataSingleton currentLocation];
+    if (currentLocation && grave) {
+        SHOW_LOADING(@"Loading")
+        [GooglePlacesUtils getDirectionsToLocationWithReference:[grave objectForKey:@"cemeteryRef"]
+                                             cemeteryFoundBlock:^(NSString *address) {
+                                                 NSDictionary* launchOptions;
+                                                 
+                                                 //open native maps
+                                                 NSDictionary* endDictionary = [self breakdownAddress:address name:[grave objectForKey:@"name"]];
+                                                 MKMapItem* start = [MKMapItem mapItemForCurrentLocation];
+                                                 CLLocation* cLocation = [[CLLocation alloc] initWithLatitude:[[grave objectForKey:@"cemeteryLat"] doubleValue] longitude:[[grave objectForKey:@"cemeteryLon"] doubleValue]];
+                                                 MKMapItem* end = [[MKMapItem alloc] initWithPlacemark:[[MKPlacemark alloc] initWithCoordinate:cLocation.coordinate addressDictionary:endDictionary]];
+                                                 if ([currentLocation distanceFromLocation:cLocation] >= 250) {
+                                                     launchOptions = @{MKLaunchOptionsDirectionsModeKey : MKLaunchOptionsDirectionsModeDriving};
+                                                 } else {
+                                                     launchOptions = @{MKLaunchOptionsDirectionsModeKey : MKLaunchOptionsDirectionsModeWalking};
+                                                 }
+                                                 [MKMapItem openMapsWithItems:@[start, end] launchOptions:launchOptions];
+                                             }
+                                           afterEverythingBlock:^{
+                                               dispatch_async(dispatch_get_main_queue(), ^{
+                                                   HIDE_LOADING
+                                               });
+                                           }];
     }
 }
 
@@ -162,16 +125,19 @@
     return (interfaceOrientation == UIInterfaceOrientationPortrait);
 }
 
-- (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation {
-    currentLocation = newLocation;
-    userRegion = [mapView region];
+- (void)mapView:(MKMapView *)mapView didUpdateUserLocation:(MKUserLocation *)userLocation {
+    [DataSingleton setCurrentLocation:userLocation.location];
 }
 
-- (void)getDirections {
+- (void)showDirectionsToLocation:(CLLocation *)location {
+    [mapView setCenterCoordinate:location.coordinate animated:TRUE];
+    MapAnnotation* annotation = [[MapAnnotation alloc] initWithCoordinate:location.coordinate title:[[DataSingleton grave] objectForKey:@"name"]];
+    [mapView addAnnotation:annotation];
+    
     MKDirectionsRequest *request = [[MKDirectionsRequest alloc] init];
     
     request.source = [MKMapItem mapItemForCurrentLocation];
-    request.destination = [[MKMapItem alloc] initWithPlacemark:[[MKPlacemark alloc] initWithCoordinate:cemeteryLocation.coordinate addressDictionary:nil]];
+    request.destination = [[MKMapItem alloc] initWithPlacemark:[[MKPlacemark alloc] initWithCoordinate:location.coordinate addressDictionary:nil]];
     request.requestsAlternateRoutes = NO;
     MKDirections *directions = [[MKDirections alloc] initWithRequest:request];
     
@@ -180,6 +146,8 @@
             // Handle error
         } else {
             [self showRoute:response];
+            [clearButton setHidden:NO];
+            [navButton setHidden:NO];
         }
     }];
 }
@@ -227,6 +195,14 @@
     }
     
     return dict;
+}
+
+- (void)showListOfGraves:(NSArray *)graves {
+    [self presentViewController:[[GravesTableViewController alloc] init] animated:YES completion:nil];
+}
+
+- (IBAction)showImage:(id)sender {
+    [self presentViewController:[[ImageViewController alloc] init] animated:YES completion:nil];
 }
 
 @end

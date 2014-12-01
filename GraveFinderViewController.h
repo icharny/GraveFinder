@@ -12,25 +12,24 @@
 @interface GraveFinderViewController : UIViewController <MKMapViewDelegate, CLLocationManagerDelegate>
 {
     IBOutlet MKMapView* mapView;
-    IBOutlet UILabel* locationLabel;
     CLLocationManager* locationManager;
-    CLLocation* currentLocation;
-    CLLocation* cemeteryLocation;
     NSString* cemeteryReference;
-    MKCoordinateRegion userRegion;
+    IBOutlet UIButton* navButton;
+    IBOutlet UIButton* clearButton;
+    IBOutlet UIButton* imageButton;
 }
 
 @property (nonatomic, strong) MKMapView* mapView;
 @property (nonatomic, strong) UILabel* locationLabel;
-@property (nonatomic, strong) CLLocation* currentLocation;
-@property (nonatomic, strong) CLLocation* cemeteryLocation;
 @property (nonatomic, strong) NSString* cemeteryReference;
-@property (nonatomic) MKCoordinateRegion userRegion;
+@property (nonatomic, strong) UIImageView* imageView;
 
-- (IBAction)getNearestCemetery:(id)sender;
 - (IBAction)clearMap:(id)sender;
 - (IBAction)centerOnUser:(id)sender;
 - (IBAction)getDirections:(id)sender;
 - (IBAction)save:(id)sender;
 - (IBAction)locate:(id)sender;
-@end
+- (IBAction)showImage:(id)sender;
+- (void)showDirectionsToLocation:(CLLocation *)location;
+- (void)showListOfGraves:(NSArray *)graves;
+- (void)returnToGraveSearch;@end
