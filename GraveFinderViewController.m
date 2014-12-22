@@ -31,10 +31,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    locationManager = [[CLLocationManager alloc] init];
-    [locationManager requestWhenInUseAuthorization];
-    //    [locationManager requestAlwaysAuthorization];
-    locationManager.desiredAccuracy = kCLLocationAccuracyBest;
+    CLLocationManager* locationManager = [DataSingleton locationManager];
     locationManager.delegate = self;
     [locationManager startUpdatingLocation];
     cemeteryReference = nil;
@@ -48,15 +45,15 @@
     if ([DataSingleton grave]) {
         [navButton setHidden:NO];
         [clearButton setHidden:NO];
+        [cemeteryNameLabel setHidden:NO];
+        cemeteryNameLabel.text = [[DataSingleton grave] objectForKey:@"cemeteryName"];
         if ([[[DataSingleton grave] objectForKey:@"hasImage"] isEqual:@1]) {
             [imageButton setHidden:NO];
         } else {
             [imageButton setHidden:YES];
         }
-    } else {
-        [navButton setHidden:YES];
-        [clearButton setHidden:YES];
-        [imageButton setHidden:YES];
+    } else if (![DataSingleton hasData]) {
+        [self clearMap:nil];
     }
     [super viewWillAppear:animated];
 }
@@ -66,7 +63,11 @@
 }
 
 - (void)returnToGraveSearch {
-    [self presentViewController:[[NameInputViewController alloc] initWithType:kFind] animated:YES completion:nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self dismissViewControllerAnimated:YES completion:^{
+            [self presentViewController:[[NameInputViewController alloc] initWithType:kFind] animated:YES completion:nil];
+        }];
+    });
 }
 
 - (IBAction)locate:(id)sender {
@@ -88,6 +89,7 @@
     [clearButton setHidden:YES];
     [navButton setHidden:YES];
     [imageButton setHidden:YES];
+    [cemeteryNameLabel setHidden:YES];
     [self centerOnUser:nil];
 }
 
@@ -113,9 +115,7 @@
                                                  [MKMapItem openMapsWithItems:@[start, end] launchOptions:launchOptions];
                                              }
                                            afterEverythingBlock:^{
-                                               dispatch_async(dispatch_get_main_queue(), ^{
-                                                   HIDE_LOADING
-                                               });
+                                               HIDE_LOADING
                                            }];
     }
 }
@@ -126,34 +126,40 @@
 }
 
 - (void)mapView:(MKMapView *)mapView didUpdateUserLocation:(MKUserLocation *)userLocation {
+    if (![DataSingleton currentLocation]) {
+        [self centerOnUser:nil];
+    }
     [DataSingleton setCurrentLocation:userLocation.location];
 }
 
 - (void)showDirectionsToLocation:(CLLocation *)location {
-    [mapView setCenterCoordinate:location.coordinate animated:TRUE];
-    MapAnnotation* annotation = [[MapAnnotation alloc] initWithCoordinate:location.coordinate title:[[DataSingleton grave] objectForKey:@"name"]];
-    [mapView addAnnotation:annotation];
-    
-    MKDirectionsRequest *request = [[MKDirectionsRequest alloc] init];
-    
-    request.source = [MKMapItem mapItemForCurrentLocation];
-    request.destination = [[MKMapItem alloc] initWithPlacemark:[[MKPlacemark alloc] initWithCoordinate:location.coordinate addressDictionary:nil]];
-    request.requestsAlternateRoutes = NO;
-    MKDirections *directions = [[MKDirections alloc] initWithRequest:request];
-    
-    [directions calculateDirectionsWithCompletionHandler:^(MKDirectionsResponse *response, NSError *error) {
-        if (error) {
-            // Handle error
-        } else {
-            [self showRoute:response];
-            [clearButton setHidden:NO];
-            [navButton setHidden:NO];
-        }
-    }];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self dismissViewControllerAnimated:YES completion:^{
+            [mapView setCenterCoordinate:location.coordinate animated:TRUE];
+            MapAnnotation* annotation = [[MapAnnotation alloc] initWithCoordinate:location.coordinate title:[[DataSingleton grave] objectForKey:@"name"]];
+            [mapView addAnnotation:annotation];
+            
+            MKDirectionsRequest *request = [[MKDirectionsRequest alloc] init];
+            
+            request.source = [MKMapItem mapItemForCurrentLocation];
+            request.destination = [[MKMapItem alloc] initWithPlacemark:[[MKPlacemark alloc] initWithCoordinate:location.coordinate addressDictionary:nil]];
+            request.requestsAlternateRoutes = NO;
+            MKDirections *directions = [[MKDirections alloc] initWithRequest:request];
+            
+            [directions calculateDirectionsWithCompletionHandler:^(MKDirectionsResponse *response, NSError *error) {
+                if (error) {
+                    // Handle error
+                } else {
+                    [self showRoute:response];
+                    [clearButton setHidden:NO];
+                    [navButton setHidden:NO];
+                }
+            }];
+        }];
+    });
 }
 
-- (void)showRoute:(MKDirectionsResponse *)response
-{
+- (void)showRoute:(MKDirectionsResponse *)response {
     for (MKRoute* route in response.routes) {
         [mapView addOverlay:route.polyline level:MKOverlayLevelAboveRoads];
         for (MKRouteStep* step in route.steps) {
@@ -162,16 +168,14 @@
     }
 }
 
-- (MKOverlayRenderer *)mapView:(MKMapView *)mapView rendererForOverlay:(id<MKOverlay>)overlay
-{
+- (MKOverlayRenderer *)mapView:(MKMapView *)mapView rendererForOverlay:(id<MKOverlay>)overlay {
     MKPolylineRenderer* renderer = [[MKPolylineRenderer alloc] initWithOverlay:overlay];
     renderer.strokeColor = [UIColor blueColor];
     renderer.lineWidth = 5.0;
     return renderer;
 }
 
-- (NSDictionary *)breakdownAddress:(NSString *)address name:(NSString *)name
-{
+- (NSDictionary *)breakdownAddress:(NSString *)address name:(NSString *)name {
     NSMutableDictionary* dict = [NSMutableDictionary dictionary];
     
     NSMutableArray* components = [NSMutableArray arrayWithArray:[address componentsSeparatedByString:@", "]];
@@ -197,8 +201,12 @@
     return dict;
 }
 
-- (void)showListOfGraves:(NSArray *)graves {
-    [self presentViewController:[[GravesTableViewController alloc] init] animated:YES completion:nil];
+- (void)showListOfGraves {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self dismissViewControllerAnimated:YES completion:^{
+            [self presentViewController:[[GravesTableViewController alloc] init] animated:YES completion:nil];
+        }];
+    });
 }
 
 - (IBAction)showImage:(id)sender {

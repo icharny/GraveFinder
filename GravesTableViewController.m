@@ -17,7 +17,6 @@
 @implementation GravesTableViewController
 
 - (IBAction)back:(id)sender {
-    [self.presentingViewController dismissViewControllerAnimated:YES completion:nil];
     [(GraveFinderViewController *)self.presentingViewController returnToGraveSearch];
 }
 
@@ -33,7 +32,7 @@
     // Configure the cell
     PFObject* grave = [[DataSingleton graves] objectAtIndex:[indexPath row]];
     cell.textLabel.text = [[grave objectForKey:@"fullName"] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-
+    
     NSMutableString* deceasedString = [NSMutableString stringWithString:@"Year Deceased: "];
     NSString* year = [grave objectForKey:@"deceasedYear"];
     if ([year isEqualToString:@""]) {
@@ -51,14 +50,14 @@
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return [DataSingleton graves].count;
+    NSArray* graves = [DataSingleton graves];
+    return graves.count;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     PFObject* grave = [[DataSingleton graves] objectAtIndex:[indexPath row]];
     [DataSingleton setGrave:grave];
     CLLocation* cLocation = [[CLLocation alloc] initWithLatitude:[[grave objectForKey:@"cemeteryLat"] doubleValue] longitude:[[grave objectForKey:@"cemeteryLon"] doubleValue]];
-    [self.presentingViewController dismissViewControllerAnimated:YES completion:nil];
     [(GraveFinderViewController *)self.presentingViewController showDirectionsToLocation:cLocation];
 }
 

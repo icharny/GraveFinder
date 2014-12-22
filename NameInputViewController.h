@@ -14,7 +14,7 @@
     [actionSheetLoad showInView:self.view];
 
 #define HIDE_LOADING \
-    [actionSheetLoad dismissWithClickedButtonIndex:0 animated:YES];
+    [actionSheetLoad dismissWithClickedButtonIndex:0 animated:YES]; 
 
 typedef enum {
     kFind,

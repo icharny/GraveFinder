@@ -12,11 +12,11 @@
 @interface GraveFinderViewController : UIViewController <MKMapViewDelegate, CLLocationManagerDelegate>
 {
     IBOutlet MKMapView* mapView;
-    CLLocationManager* locationManager;
     NSString* cemeteryReference;
     IBOutlet UIButton* navButton;
     IBOutlet UIButton* clearButton;
     IBOutlet UIButton* imageButton;
+    IBOutlet UILabel* cemeteryNameLabel;
 }
 
 @property (nonatomic, strong) MKMapView* mapView;
@@ -31,5 +31,5 @@
 - (IBAction)locate:(id)sender;
 - (IBAction)showImage:(id)sender;
 - (void)showDirectionsToLocation:(CLLocation *)location;
-- (void)showListOfGraves:(NSArray *)graves;
+- (void)showListOfGraves;
 - (void)returnToGraveSearch;@end

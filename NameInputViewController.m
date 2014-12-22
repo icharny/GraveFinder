@@ -40,7 +40,7 @@
     if (row == 0) {
         return @"";
     } else {
-        return [NSString stringWithFormat:@"%ld", firstYear - 1 + row];
+        return [NSString stringWithFormat:@"%ld", (long)(firstYear - 1 + row)];
     }
 }
 
@@ -179,6 +179,7 @@
     [DataSingleton setFirstName:firstName];
     [DataSingleton setLastName:lastName];
     [DataSingleton setFullName:fullName];
+    [DataSingleton setDeceasedYear:[NSNumber numberWithInt:[deceasedYear intValue]]];
     
     firstName = [firstName lowercaseString];
     lastName = [lastName lowercaseString];
@@ -225,18 +226,15 @@
                     NSString *uuidStr = (__bridge_transfer NSString *)CFUUIDCreateString(NULL, uuid);
                     CFRelease(uuid);
                     PFFile *imageFile = [PFFile fileWithName:[NSString stringWithFormat:@"%@.jpeg", uuidStr] data:data];
-                    [grave setObject:imageFile forKey:@"imageFile"];                    grave[@"cemeteryName"] = name;
+                    [grave setObject:imageFile forKey:@"imageFile"];
+                    grave[@"cemeteryName"] = name;
                     grave[@"cemeteryLat"] = [NSNumber numberWithDouble:coordinate.latitude];
                     grave[@"cemeteryLon"] = [NSNumber numberWithDouble:coordinate.longitude];
                     grave[@"cemeteryRef"] = cemeteryReference;
-                    //                    [DataSingleton setGrave:grave];
-                    // [grave saveEventually];
                     [grave saveInBackground];
                 } afterEverythingBlock:^{
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        HIDE_LOADING
-                        [self back:nil];
-                    });
+                    HIDE_LOADING
+                    [self back:nil];
                 }];
             }
         } else {
@@ -252,9 +250,7 @@
                 [query whereKey:@"deceasedYear" equalTo:deceasedYear];
             }
             [query findObjectsInBackgroundWithBlock:^(NSArray *objects, NSError *error) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    HIDE_LOADING
-                });
+                HIDE_LOADING
                 if (!error) {
                     [DataSingleton setGraves:objects];
                     // The find succeeded.
@@ -262,15 +258,9 @@
                         PFObject* grave = (PFObject *)[objects firstObject];
                         [DataSingleton setGrave:grave];
                         CLLocation* cLocation = [[CLLocation alloc] initWithLatitude:[[grave objectForKey:@"cemeteryLat"] doubleValue] longitude:[[grave objectForKey:@"cemeteryLon"] doubleValue]];
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            [self.presentingViewController dismissViewControllerAnimated:YES completion:nil];
-                            [(GraveFinderViewController *)self.presentingViewController showDirectionsToLocation:cLocation];
-                        });
+                        [(GraveFinderViewController *)self.presentingViewController showDirectionsToLocation:cLocation];
                     } else if (objects.count > 0) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            [self.presentingViewController dismissViewControllerAnimated:YES completion:nil];
-                            [(GraveFinderViewController *)self.presentingViewController showListOfGraves:objects];
-                        });
+                        [(GraveFinderViewController *)self.presentingViewController showListOfGraves];
                     } else {
                         dispatch_async(dispatch_get_main_queue(), ^{
                             [[[UIAlertView alloc] initWithTitle:@"Error" message:@"There are no graves with that name." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil] show];
@@ -309,7 +299,7 @@
     UIPickerView* pickerView = (UIPickerView *)deceasedTextField.inputView;
     long selected = [pickerView selectedRowInComponent:0];
     if (selected > 0) {
-        deceasedTextField.text = [NSString stringWithFormat:@"%ld", [pickerView selectedRowInComponent:0] + firstYear - 1];
+        deceasedTextField.text = [NSString stringWithFormat:@"%ld", (long)([pickerView selectedRowInComponent:0] + firstYear - 1)];
     } else {
         deceasedTextField.text = @"";
     }
@@ -317,24 +307,25 @@
 
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info {
     
-    [self dismissViewControllerAnimated:YES completion:nil];
-    UIImage* img = [info objectForKey:UIImagePickerControllerOriginalImage];
-    if (img) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            CGPoint center = photoButton.center;
-            CGRect frame = photoButton.frame;
-            double ratio = img.size.height/img.size.width;
-            if (ratio > 1) {
-                frame.size.width = frame.size.height / ratio;
-            } else {
-                frame.size.height = frame.size.width * ratio;
-            }
-            photoButton.frame = frame;
-            photoButton.center = center;
-            [photoButton setBackgroundImage:img forState:UIControlStateNormal];
-            [photoButton setTitle:@"" forState:UIControlStateNormal];
-        });
-    }
+    [self dismissViewControllerAnimated:YES completion:^{
+        UIImage* img = [info objectForKey:UIImagePickerControllerOriginalImage];
+        if (img) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                CGPoint center = photoButton.center;
+                CGRect frame = photoButton.frame;
+                double ratio = img.size.height/img.size.width;
+                if (ratio > 1) {
+                    frame.size.width = frame.size.height / ratio;
+                } else {
+                    frame.size.height = frame.size.width * ratio;
+                }
+                photoButton.frame = frame;
+                photoButton.center = center;
+                [photoButton setBackgroundImage:img forState:UIControlStateNormal];
+                [photoButton setTitle:@"" forState:UIControlStateNormal];
+            });
+        }
+    }];
 }
 
 - (IBAction)clear:(id)sender {

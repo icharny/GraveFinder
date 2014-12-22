@@ -16,11 +16,13 @@
 
 @implementation DataSingleton
 
+@synthesize locationManager;
 @synthesize currentLocation;
 @synthesize grave;
 @synthesize firstName, lastName, fullName, img64;
 @synthesize deceasedYear;
 @synthesize gravesArray;
+@synthesize hasData;
 
 static DataSingleton* singleton = nil;
 
@@ -34,6 +36,13 @@ static DataSingleton* singleton = nil;
     self.gravesArray = [NSArray array];
     self.deceasedYear = nil;
     self.img64 = nil;
+    
+    self.locationManager = [[CLLocationManager alloc] init];
+    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 8.0) {
+        [self.locationManager requestWhenInUseAuthorization];
+    }
+    self.locationManager.desiredAccuracy = kCLLocationAccuracyBest;
+    self.hasData = NO;
     return self;
 }
 
@@ -53,6 +62,15 @@ static DataSingleton* singleton = nil;
     s.gravesArray = [NSArray array];
     s.img64 = nil;
     s.deceasedYear = nil;
+    s.hasData = NO;
+}
+
++ (BOOL)hasData {
+    return [DataSingleton getSingleon].hasData;
+}
+
++ (CLLocationManager *)locationManager {
+    return [DataSingleton getSingleon].locationManager;
 }
 
 + (CLLocation *)currentLocation {
@@ -93,26 +111,32 @@ static DataSingleton* singleton = nil;
 
 + (void)setGrave:(PFObject *)grave {
     [DataSingleton getSingleon].grave = grave;
+    [DataSingleton getSingleon].hasData = YES;
 }
 
 + (void)setFullName:(NSString *)fullName {
     [DataSingleton getSingleon].fullName = fullName;
+    [DataSingleton getSingleon].hasData = YES;
 }
 
 + (void)setFirstName:(NSString *)firstName {
     [DataSingleton getSingleon].firstName = firstName;
+    [DataSingleton getSingleon].hasData = YES;
 }
 
 + (void)setLastName:(NSString *)lastName {
     [DataSingleton getSingleon].lastName = lastName;
+    [DataSingleton getSingleon].hasData = YES;
 }
 
 + (void)setGraves:(NSArray *)graves {
     [DataSingleton getSingleon].gravesArray = graves;
+    [DataSingleton getSingleon].hasData = YES;
 }
 
 + (void)setDeceasedYear:(NSNumber *)deceased {
     [DataSingleton getSingleon].deceasedYear = deceased;
+    [DataSingleton getSingleon].hasData = YES;
 }
 
 + (void)setImage64:(NSString *)image64 {

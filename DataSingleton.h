@@ -11,6 +11,8 @@
 #import <Parse/Parse.h>
 
 @interface DataSingleton : NSObject {
+    CLLocationManager* locationManager;
+    
     CLLocation* currentLocation;
     PFObject* grave;
     
@@ -23,8 +25,11 @@
     NSString* img64;
     
     NSArray* gravesArray;
+    
+    BOOL hasData;
 }
 
+@property (nonatomic, strong) CLLocationManager* locationManager;
 @property (nonatomic, strong) CLLocation* currentLocation;
 @property (nonatomic, strong) PFObject* grave;
 @property (nonatomic, strong) NSString* firstName;
@@ -33,9 +38,12 @@
 @property (nonatomic, strong) NSNumber* deceasedYear;
 @property (nonatomic, strong) NSString* img64;
 @property (nonatomic, strong) NSArray* gravesArray;
+@property (nonatomic) BOOL hasData;
 
++ (BOOL)hasData;
 + (void)reset;
 
++ (CLLocationManager *)locationManager;
 + (CLLocation *)currentLocation;
 + (PFObject *)grave;
 + (NSString *)firstName;
