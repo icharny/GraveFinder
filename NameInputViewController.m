@@ -47,6 +47,16 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    firstNameTextField.text = [DataSingleton firstName];
+    lastNameTextField.text = [DataSingleton lastName];
+    NSNumber* deceasedYear = [DataSingleton deceasedYear];
+    if (deceasedYear) {
+        NSString* date = [NSString stringWithFormat:@"%@", deceasedYear];
+        if (![date isEqualToString:@"0"]) {
+            deceasedTextField.text = date;
+        }
+    }
+    
     UIImage* buttonImage;
     if (type == kSave) {
         buttonImage = [UIImage imageNamed:@"add"];
@@ -93,13 +103,6 @@
     [super viewWillAppear:animated];
     
     if (!setup) {
-        firstNameTextField.text = [DataSingleton firstName];
-        lastNameTextField.text = [DataSingleton lastName];
-        NSNumber* deceasedYear = [DataSingleton deceasedYear];
-        if (deceasedYear) {
-            deceasedTextField.text = [NSString stringWithFormat:@"%@", deceasedYear];
-        }
-        
         if (type == kFind) {
             CGRect frame = scrollView.frame;
             frame.size.height -= photoView.frame.size.height;
